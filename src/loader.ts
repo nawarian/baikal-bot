@@ -64,8 +64,40 @@ export async function loadTools(): Promise<{ tools: ToolDefinition[]; errors: st
 }
 
 /**
- * Scan the `skills/` directory and read all `.md` files,
- * returning their content as a combined string and a map keyed by filename.
+ * Recursively scan a directory for `.md` files, populating `skillsMap`
+ * with keys in the form "<dir>/<file>" for nested files.
+ */
+function collectMdFiles(
+  dir: string,
+  relativePrefix: string,
+  skillsMap: Record<string, string>,
+  errors: string[],
+): void {
+  const entries = readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+
+    const fullPath = join(dir, entry.name);
+    const key = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      collectMdFiles(fullPath, key, skillsMap, errors);
+    } else if (entry.name.endsWith(".md")) {
+      try {
+        const content = readFileSync(fullPath, "utf-8");
+        skillsMap[key] = content;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`skills/${key}: ${message}`);
+      }
+    }
+  }
+}
+
+/**
+ * Scan the `skills/` directory recursively for `.md` files,
+ * returning their content as a combined string and a map keyed by relative path.
  */
 export function loadSkills(): { combined: string; skillsMap: Record<string, string>; errors: string[] } {
   const skillsDir = join(ROOT_DIR, "skills");
@@ -76,22 +108,7 @@ export function loadSkills(): { combined: string; skillsMap: Record<string, stri
     return { combined: "", skillsMap, errors };
   }
 
-  const entries = readdirSync(skillsDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (entry.isDirectory()) continue;
-    if (!entry.name.endsWith(".md")) continue;
-    if (entry.name.startsWith(".")) continue;
-
-    const filePath = join(skillsDir, entry.name);
-    try {
-      const content = readFileSync(filePath, "utf-8");
-      skillsMap[entry.name] = content;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      errors.push(`skills/${entry.name}: ${message}`);
-    }
-  }
+  collectMdFiles(skillsDir, "", skillsMap, errors);
 
   const combined = Object.values(skillsMap).join("\n\n").trim();
 

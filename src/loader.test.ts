@@ -72,10 +72,11 @@ describe("loader integration (project tools/ and skills/)", () => {
     const { loadAll } = await import("./loader.js");
     const result = await loadAll();
 
-    // .gitkeep should not show up as a skill or tool
+    // .gitkeep should not show up as a tool
     expect(result.tools).toEqual([]);
-    expect(result.skills).toBe("");
-    expect(result.skillsMap).toEqual({});
+    // Skills are now loaded (the MS-Office skill exists)
+    expect(result.skills.length).toBeGreaterThan(0);
+    expect(Object.keys(result.skillsMap).length).toBeGreaterThan(0);
     expect(result.errors).toEqual([]);
   });
 
@@ -86,21 +87,26 @@ describe("loader integration (project tools/ and skills/)", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("should have an empty skills result when only .gitkeep exists", async () => {
+  it("should load skill files from nested directories", async () => {
     const { loadSkills } = await import("./loader.js");
     const result = loadSkills();
-    expect(result.combined).toBe("");
-    expect(result.skillsMap).toEqual({});
+
+    // Should find MS-Office skill files
+    expect(result.combined.length).toBeGreaterThan(0);
+    expect(Object.keys(result.skillsMap).length).toBeGreaterThan(0);
+    // Should have the MS-Office subdirectory entries
+    const hasSkill = Object.keys(result.skillsMap).some(k => k.includes("MS-Office"));
+    expect(hasSkill).toBe(true);
     expect(result.errors).toEqual([]);
   });
 
-  it("should handle loadAll with no custom tools or skills", async () => {
+  it("should handle loadAll with no custom tools", async () => {
     const { loadAll } = await import("./loader.js");
     const result = await loadAll();
 
     expect(result.tools).toEqual([]);
-    expect(result.skills).toBe("");
-    expect(result.skillsMap).toEqual({});
+    // Skills exist in the project
+    expect(result.skills.length).toBeGreaterThan(0);
     expect(result.errors).toEqual([]);
   });
 });
