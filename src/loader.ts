@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { Tool } from "@mariozechner/pi-coding-agent";
+import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 
 /**
@@ -9,7 +9,7 @@ import { defineTool } from "@mariozechner/pi-coding-agent";
  */
 export interface LoaderResult {
   /** Custom tool definitions discovered in tools/ */
-  tools: Tool[];
+  tools: ToolDefinition[];
   /** Combined skill text from skills/ */
   skills: string;
   /** Individual skill contents keyed by filename */
@@ -24,10 +24,10 @@ const ROOT_DIR = resolve(import.meta.dirname ?? __dirname, "..");
  * Scan the `tools/` directory and import each `.ts` (or `.js`) file,
  * collecting their default exports as tool definitions.
  */
-export async function loadTools(): Promise<{ tools: Tool[]; errors: string[] }> {
+export async function loadTools(): Promise<{ tools: ToolDefinition[]; errors: string[] }> {
   const toolsDir = join(ROOT_DIR, "tools");
   const errors: string[] = [];
-  const tools: Tool[] = [];
+  const tools: ToolDefinition[] = [];
 
   if (!existsSync(toolsDir)) {
     return { tools, errors };
@@ -45,13 +45,13 @@ export async function loadTools(): Promise<{ tools: Tool[]; errors: string[] }> 
       const mod = await import(pathToFileURL(filePath).href);
 
       if (mod.default && typeof mod.default === "object" && "name" in mod.default) {
-        // Already a Tool object (from defineTool())
-        tools.push(mod.default as Tool);
+        // Already a ToolDefinition object (from defineTool())
+        tools.push(mod.default as ToolDefinition);
       } else if (typeof mod.default === "function") {
         // It's a factory or defineTool call — try calling it or use the return
         const result = mod.default();
         if (result && typeof result === "object" && "name" in result) {
-          tools.push(result as Tool);
+          tools.push(result as ToolDefinition);
         }
       }
     } catch (err: unknown) {

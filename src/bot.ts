@@ -1,5 +1,5 @@
 import { Telegraf, type Context } from "telegraf";
-import type { Update, Message } from "telegraf/typings/core/types/typegram";
+import type { Message } from "@telegraf/types";
 import { BOT_USERNAME, setBotUsername, isAllowedUser } from "./config.js";
 import type { BaikalEngine } from "./engine.js";
 
@@ -77,7 +77,8 @@ export class BaikalBot {
    * Check if a message tags the bot via mention entities.
    */
   private isTagged(message: Message.TextMessage): boolean {
-    if (!BOT_USERNAME) return false;
+    const botUsername = BOT_USERNAME;
+    if (!botUsername) return false;
 
     if (!message.entities || message.entities.length === 0) return false;
 
@@ -88,7 +89,7 @@ export class BaikalBot {
           entity.offset,
           entity.offset + entity.length
         );
-        return mention.toLowerCase() === `@${BOT_USERNAME.toLowerCase()}`;
+        return mention.toLowerCase() === `@${botUsername.toLowerCase()}`;
       }
       return false;
     });
@@ -110,7 +111,7 @@ export class BaikalBot {
       `I silently observe all messages but only respond when tagged. ` +
       `My capabilities can be extended with custom tools and skills.`;
 
-    await ctx.reply(helpText, { parse_mode: "Markdown" });
+    await ctx.reply(helpText, { parse_mode: "Markdown" as const });
   }
 
   /**
@@ -148,9 +149,7 @@ export class BaikalBot {
       const current = this.engine.getCurrentModelName();
       const available = this.engine.getAvailableModels().join(", ");
       await ctx.reply(
-        `Current model: ${current}\n` +
-        `Available: ${available}\n` +
-        `To switch, use /model <name>`
+        `Current model: ${current}\nAvailable: ${available}\nTo switch, use /model <name>`
       );
       return;
     }
@@ -201,11 +200,12 @@ export class BaikalBot {
       if (event.type === "turn_end") {
         // Send the response as a threaded reply
         if (responseText.trim()) {
+          const parseMode = responseText.includes("*") ? "Markdown" as const : undefined;
           ctx
             .reply(responseText, {
-              reply_to_message_id: message.message_id,
-              ...(responseText.includes("*") ? { parse_mode: "Markdown" } : {}),
-            })
+              parse_mode: parseMode,
+              reply_parameters: { message_id: message.message_id },
+            } as any)
             .catch((err) =>
               console.error("[Baikal] Failed to send reply:", err)
             );
@@ -219,9 +219,7 @@ export class BaikalBot {
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("[Baikal] Error processing tagged message:", errorMsg);
-      await ctx.reply("Sorry, I ran into an issue processing your request.", {
-        reply_to_message_id: message.message_id,
-      });
+      await ctx.reply("Sorry, I ran into an issue processing your request.");
       unsubscribe();
     }
   }

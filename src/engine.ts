@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Model, Api } from "@mariozechner/pi-ai";
+import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import {
   AuthStorage,
   createAgentSession,
@@ -7,7 +9,6 @@ import {
   ModelRegistry,
   SessionManager,
   type AgentSession,
-  type Model,
 } from "@mariozechner/pi-coding-agent";
 import { config } from "dotenv";
 import { loadAll } from "./loader.js";
@@ -55,8 +56,11 @@ export class BaikalEngine {
   /** Current model identifier (e.g. "deepseek/deepseek-chat"). */
   currentModelId: string;
 
+  /** Currently active Model object. */
+  private currentModelObj: Model<Api> | undefined;
+
   /** Loaded custom tools. */
-  customTools: import("@mariozechner/pi-coding-agent").Tool[] = [];
+  customTools: ToolDefinition[] = [];
 
   /** Loaded skills text. */
   skills: string = "";
@@ -86,6 +90,15 @@ export class BaikalEngine {
     }
     this.authStorage.setRuntimeApiKey("deepseek", apiKey);
 
+    // Register the DeepSeek provider in the model registry
+    // We import the provider config from the extension module and register
+    // directly on the model registry (avoids needing full extension runtime)
+    const deepseekModule = await import("./deepseek-provider.js");
+    // The deepseek-provider export is an ExtensionAPI factory.
+    // We'll extract the provider config from it manually.
+    const deepseekConfig = getDeepSeekProviderConfig();
+    this.modelRegistry.registerProvider("deepseek", deepseekConfig);
+
     // Load tools and skills
     const loaderResult = await loadAll();
     this.customTools = loaderResult.tools;
@@ -98,16 +111,26 @@ export class BaikalEngine {
       }
     }
 
-    // Create a DefaultResourceLoader with custom system prompt and skills
+    // Resolve the current model
+    this.currentModelObj = this.modelRegistry.find("deepseek", DEFAULT_MODEL_ID);
+    if (!this.currentModelObj) {
+      throw new Error(
+        `Model "deepseek/${DEFAULT_MODEL_ID}" not found in registry. ` +
+        "Make sure the DeepSeek provider extension is loaded correctly."
+      );
+    }
+
+    // Build the resource loader with our custom system prompt
     const resourceLoader = await this.createResourceLoader();
 
     const result = await createAgentSession({
       sessionManager: SessionManager.create(this.sessionFile),
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
-      model: this.currentModelId,
+      model: this.currentModelObj,
       customTools: this.customTools,
       resourceLoader,
+      tools: [], // Don't use built-in tools by default — only custom tools
     });
 
     this.session = result.session;
@@ -123,12 +146,9 @@ export class BaikalEngine {
   private async createResourceLoader(): Promise<DefaultResourceLoader> {
     const loader = new DefaultResourceLoader({
       cwd: ROOT,
+      agentDir: resolve(ROOT, ".pi"),
       systemPromptOverride: () => this.buildSystemPrompt(),
     });
-
-    // Register the DeepSeek provider extension
-    const { default: deepseekExtension } = await import("./deepseek-provider.js");
-    loader.addExtensionFactory(deepseekExtension);
 
     await loader.reload();
     return loader;
@@ -201,9 +221,10 @@ export class BaikalEngine {
       sessionManager: SessionManager.create(this.sessionFile),
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
-      model: this.currentModelId,
+      model: this.currentModelObj!,
       customTools: this.customTools,
       resourceLoader,
+      tools: [],
     });
 
     this.session = result.session;
@@ -232,6 +253,7 @@ export class BaikalEngine {
     }
 
     this.currentModelId = `deepseek/${name}`;
+    this.currentModelObj = model;
     await this.session.setModel(model);
     return `Model switched to ${name}.`;
   }
@@ -256,4 +278,45 @@ export class BaikalEngine {
   dispose(): void {
     this.session.dispose();
   }
+}
+
+/**
+ * Returns the DeepSeek provider config for direct registration on the ModelRegistry,
+ * mirroring what the extension module would register via pi.registerProvider().
+ */
+function getDeepSeekProviderConfig() {
+  return {
+    baseUrl: "https://api.deepseek.com/v1",
+    apiKey: "DEEPSEEK_API_KEY",
+    api: "openai-completions" as const,
+    models: [
+      {
+        id: "deepseek-chat",
+        name: "DeepSeek V4 Flash",
+        reasoning: false,
+        input: ["text" as const],
+        cost: { input: 0.3, output: 1.0, cacheRead: 0.3, cacheWrite: 0.3 },
+        contextWindow: 64000,
+        maxTokens: 8192,
+        compat: {
+          maxTokensField: "max_tokens" as const,
+          supportsDeveloperRole: false,
+        },
+      },
+      {
+        id: "deepseek-reasoner",
+        name: "DeepSeek V4 Pro",
+        reasoning: true,
+        input: ["text" as const],
+        cost: { input: 1.0, output: 4.0, cacheRead: 1.0, cacheWrite: 1.0 },
+        contextWindow: 64000,
+        maxTokens: 8192,
+        compat: {
+          maxTokensField: "max_tokens" as const,
+          supportsDeveloperRole: false,
+          thinkingFormat: "deepseek" as const,
+        },
+      },
+    ],
+  };
 }
