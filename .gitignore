@@ -3,3 +3,4 @@ dist/
 .env
 session.jsonl
 *.log
+coverage/
