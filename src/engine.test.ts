@@ -42,6 +42,7 @@ vi.mock("@mariozechner/pi-coding-agent", () => ({
   ),
   SessionManager: {
     create: vi.fn(() => ({})),
+    open: vi.fn(() => ({})),
   },
   DefaultResourceLoader: class {
     constructor(_opts: any) {}

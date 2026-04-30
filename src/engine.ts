@@ -68,11 +68,15 @@ export class BaikalEngine {
   /** Session file path. */
   sessionFile: string;
 
+  /** Project root directory. */
+  rootDir: string;
+
   constructor() {
     this.authStorage = AuthStorage.create();
     this.modelRegistry = ModelRegistry.create(this.authStorage);
     this.currentModelId = `deepseek/${DEFAULT_MODEL_ID}`;
     this.sessionFile = resolve(ROOT, "session.jsonl");
+    this.rootDir = ROOT;
   }
 
   /**
@@ -120,7 +124,8 @@ export class BaikalEngine {
     const resourceLoader = await this.createResourceLoader();
 
     const result = await createAgentSession({
-      sessionManager: SessionManager.create(this.sessionFile),
+      cwd: this.rootDir,
+      sessionManager: SessionManager.open(this.sessionFile, this.rootDir),
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
       model: this.currentModelObj,
@@ -213,7 +218,8 @@ export class BaikalEngine {
     const resourceLoader = await this.createResourceLoader();
 
     const result = await createAgentSession({
-      sessionManager: SessionManager.create(this.sessionFile),
+      cwd: this.rootDir,
+      sessionManager: SessionManager.open(this.sessionFile, this.rootDir),
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
       model: this.currentModelObj!,
