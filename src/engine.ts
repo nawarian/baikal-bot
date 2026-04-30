@@ -291,7 +291,7 @@ function getDeepSeekProviderConfig() {
     api: "openai-completions" as const,
     models: [
       {
-        id: "deepseek-chat",
+        id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
         reasoning: false,
         input: ["text" as const],
@@ -304,7 +304,7 @@ function getDeepSeekProviderConfig() {
         },
       },
       {
-        id: "deepseek-reasoner",
+        id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
         reasoning: true,
         input: ["text" as const],

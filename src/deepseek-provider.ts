@@ -13,7 +13,7 @@ export default function (pi: ExtensionAPI): void {
     api: "openai-completions",
     models: [
       {
-        id: "deepseek-chat",
+        id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
         reasoning: false,
         input: ["text"],
@@ -26,7 +26,7 @@ export default function (pi: ExtensionAPI): void {
         },
       },
       {
-        id: "deepseek-reasoner",
+        id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
         reasoning: true,
         input: ["text"],

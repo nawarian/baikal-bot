@@ -9,10 +9,10 @@ export const ALLOWED_USERS: string[] = ["nawarian"];
 export const MAX_MESSAGE_LOG = 100;
 
 /** Default DeepSeek model ID (without provider prefix). */
-export const DEFAULT_MODEL_ID = "deepseek-chat";
+export const DEFAULT_MODEL_ID = "deepseek-v4-flash";
 
 /** Pro DeepSeek model ID (for /model switching). */
-export const PRO_MODEL_ID = "deepseek-reasoner";
+export const PRO_MODEL_ID = "deepseek-v4-pro";
 
 /** Bot's Telegram username (set at runtime after bot info is fetched). */
 export let BOT_USERNAME: string | undefined;
