@@ -1,0 +1,23 @@
+{
+  "name": "baikal-home-assist",
+  "version": "0.1.0",
+  "description": "Baikal — a Telegram home assistant bot powered by pi.dev agent SDK",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node --loader tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.70.6",
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3",
+    "typebox": "^1.1.24"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
