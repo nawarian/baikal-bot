@@ -6,7 +6,7 @@
 export const ALLOWED_USERS: string[] = ["nawarian"];
 
 /** Maximum number of recent messages to keep in the message log. */
-export const MAX_MESSAGE_LOG = 100;
+export const MAX_MESSAGE_LOG = 500;
 
 /** Default DeepSeek model ID (without provider prefix). */
 export const DEFAULT_MODEL_ID = "deepseek-v4-flash";
