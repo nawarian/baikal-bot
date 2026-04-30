@@ -138,6 +138,10 @@ export class BaikalEngine {
     if (result.modelFallbackMessage) {
       console.warn("[Baikal]", result.modelFallbackMessage);
     }
+
+    // Apply sandbox to restrict file access to the project directory
+    const { applySandbox } = await import("./sandbox.js");
+    applySandbox(this.session, this.rootDir);
   }
 
   /**
@@ -232,6 +236,10 @@ export class BaikalEngine {
     if (result.modelFallbackMessage) {
       console.warn("[Baikal]", result.modelFallbackMessage);
     }
+
+    // Re-apply sandbox on the new session
+    const { applySandbox } = await import("./sandbox.js");
+    applySandbox(this.session, this.rootDir);
   }
 
   /**
