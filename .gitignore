@@ -4,3 +4,9 @@ dist/
 session.jsonl
 *.log
 coverage/
+
+# Data files (user-generated content, downloads)
+data/
+
+# Long-term memory
+memory/
