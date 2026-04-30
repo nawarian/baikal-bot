@@ -219,6 +219,9 @@ export class BaikalEngine {
   async resetSession(): Promise<void> {
     this.session.dispose();
 
+    // Clear the message log so the fresh session starts with no context
+    this.messageLog = [];
+
     const resourceLoader = await this.createResourceLoader();
 
     const result = await createAgentSession({
