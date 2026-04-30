@@ -228,9 +228,9 @@ export class BaikalBot {
         responseText += event.assistantMessageEvent.delta;
       }
 
-      if (event.type === "turn_end") {
+      if (event.type === "agent_end") {
         clearInterval(typingInterval);
-        // Send the response as a threaded reply
+        // Send the full accumulated response as a threaded reply
         if (responseText.trim()) {
           const parseMode = responseText.includes("*") ? "Markdown" as const : undefined;
           ctx
