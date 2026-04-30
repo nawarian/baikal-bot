@@ -225,6 +225,7 @@ export class BaikalBot {
             .reply(responseText, {
               parse_mode: parseMode,
               reply_parameters: { message_id: message.message_id },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any)
             .catch((err) =>
               console.error("[Baikal] Failed to send reply:", err)

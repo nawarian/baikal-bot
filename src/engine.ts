@@ -91,11 +91,7 @@ export class BaikalEngine {
     this.authStorage.setRuntimeApiKey("deepseek", apiKey);
 
     // Register the DeepSeek provider in the model registry
-    // We import the provider config from the extension module and register
-    // directly on the model registry (avoids needing full extension runtime)
-    const deepseekModule = await import("./deepseek-provider.js");
-    // The deepseek-provider export is an ExtensionAPI factory.
-    // We'll extract the provider config from it manually.
+    // We use the inline config helper instead of loading the extension module
     const deepseekConfig = getDeepSeekProviderConfig();
     this.modelRegistry.registerProvider("deepseek", deepseekConfig);
 
@@ -249,6 +245,7 @@ export class BaikalEngine {
     const oldCustomNames = new Set(this.customTools.map((t) => t.name));
     const builtInTools = currentTools.filter((t) => !oldCustomNames.has(t.name));
     // Cast new custom tools (ToolDefinition is structurally compatible with AgentTool)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.session.agent.state.tools = [...builtInTools, ...this.customTools] as any;
 
     // Update the system prompt with new skills (will apply on next turn)
