@@ -207,6 +207,17 @@ export class BaikalBot {
 
     if (!query || query.trim().length === 0) return;
 
+    const chatId = ctx.chat?.id;
+
+    // Start typing indicator and refresh periodically while processing
+    const typingInterval = setInterval(() => {
+      if (chatId) {
+        ctx.telegram
+          .sendChatAction(chatId, "typing")
+          .catch(() => {}); // best-effort
+      }
+    }, 4000);
+
     // Subscribe to session events to capture the response
     let responseText = "";
     const unsubscribe = this.engine.session.subscribe((event) => {
@@ -218,6 +229,7 @@ export class BaikalBot {
       }
 
       if (event.type === "turn_end") {
+        clearInterval(typingInterval);
         // Send the response as a threaded reply
         if (responseText.trim()) {
           const parseMode = responseText.includes("*") ? "Markdown" as const : undefined;
@@ -235,11 +247,17 @@ export class BaikalBot {
       }
     });
 
+    // Send initial typing action before processing starts
+    if (chatId) {
+      ctx.telegram.sendChatAction(chatId, "typing").catch(() => {});
+    }
+
     try {
       await this.engine.processTaggedMessage(query);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("[Baikal] Error processing tagged message:", errorMsg);
+      clearInterval(typingInterval);
       await ctx.reply("Sorry, I ran into an issue processing your request.");
       unsubscribe();
     }
