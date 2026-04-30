@@ -8,7 +8,6 @@ import {
   DefaultResourceLoader,
   ModelRegistry,
   SessionManager,
-  createCodingTools,
   type AgentSession,
 } from "@mariozechner/pi-coding-agent";
 import { config } from "dotenv";
@@ -231,6 +230,45 @@ export class BaikalEngine {
     if (result.modelFallbackMessage) {
       console.warn("[Baikal]", result.modelFallbackMessage);
     }
+  }
+
+  /**
+   * Reload tools and skills at runtime without resetting the conversation.
+   * Re-scans the tools/ and skills/ directories and hot-swaps the agent's tool set.
+   * Returns a message describing the result.
+   */
+  async reloadToolsAndSkills(): Promise<string> {
+    const loaderResult = await loadAll();
+    this.customTools = loaderResult.tools;
+    this.skills = loaderResult.skills;
+
+    // Keep built-in tools, replace custom tools in-place
+    // The agent's tool array is a mix of built-in tools and custom tools
+    const currentTools = this.session.agent.state.tools;
+    // Built-in tools are those whose names don't appear in the OLD customTools
+    const oldCustomNames = new Set(this.customTools.map((t) => t.name));
+    const builtInTools = currentTools.filter((t) => !oldCustomNames.has(t.name));
+    // Cast new custom tools (ToolDefinition is structurally compatible with AgentTool)
+    this.session.agent.state.tools = [...builtInTools, ...this.customTools] as any;
+
+    // Update the system prompt with new skills (will apply on next turn)
+    const systemPrompt = this.buildSystemPrompt();
+    this.session.agent.state.systemPrompt = systemPrompt;
+
+    const warnings: string[] = [];
+    if (loaderResult.errors.length > 0) {
+      warnings.push(...loaderResult.errors.map((e) => `  ${e}`));
+    }
+
+    const toolNames = this.customTools.map((t) => t.name).join(", ");
+    const skillCount = Object.keys(loaderResult.skillsMap).length;
+    return (
+      `Tools and skills reloaded. ` +
+      `Loaded ${this.customTools.length} tool(s)` +
+      (this.customTools.length > 0 ? ` (${toolNames})` : "") +
+      ` and ${skillCount} skill(s).` +
+      (warnings.length > 0 ? `\nWarnings:\n${warnings.join("\n")}` : "")
+    );
   }
 
   /**

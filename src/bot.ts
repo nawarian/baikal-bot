@@ -67,6 +67,11 @@ export class BaikalBot {
       await this.handleModel(ctx);
     });
 
+    // /reload command — reload tools and skills
+    this.bot.command("reload", async (ctx) => {
+      await this.handleReload(ctx);
+    });
+
     // All other messages — check for tag
     this.bot.on("text", async (ctx) => {
       await this.handleMessage(ctx);
@@ -107,7 +112,8 @@ export class BaikalBot {
       `*Commands:*\n` +
       `/start, /help — Show this message\n` +
       `/new — Reset my conversation context (keeps message history)\n` +
-      `/model — Switch AI model (authorized users only)\n\n` +
+      `/model — Switch AI model (authorized users only)\n` +
+      `/reload — Reload tools and skills from disk without resetting\n\n` +
       `I silently observe all messages but only respond when tagged. ` +
       `My capabilities can be extended with custom tools and skills.`;
 
@@ -125,6 +131,20 @@ export class BaikalBot {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[Baikal] Failed to reset session:", message);
       await ctx.reply("Sorry, I couldn't reset my context. Please try again.");
+    }
+  }
+
+  /**
+   * Handle /reload command — reload tools and skills from disk.
+   */
+  private async handleReload(ctx: Context): Promise<void> {
+    try {
+      const result = await this.engine.reloadToolsAndSkills();
+      await ctx.reply(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[Baikal] Failed to reload tools/skills:", message);
+      await ctx.reply("Failed to reload tools and skills. Check server logs.");
     }
   }
 
