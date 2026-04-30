@@ -8,6 +8,7 @@ import {
   DefaultResourceLoader,
   ModelRegistry,
   SessionManager,
+  createCodingTools,
   type AgentSession,
 } from "@mariozechner/pi-coding-agent";
 import { config } from "dotenv";
@@ -128,9 +129,8 @@ export class BaikalEngine {
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
       model: this.currentModelObj,
-      customTools: this.customTools,
       resourceLoader,
-      tools: [], // Don't use built-in tools by default — only custom tools
+      customTools: this.customTools,
     });
 
     this.session = result.session;
@@ -222,9 +222,8 @@ export class BaikalEngine {
       authStorage: this.authStorage,
       modelRegistry: this.modelRegistry,
       model: this.currentModelObj!,
-      customTools: this.customTools,
       resourceLoader,
-      tools: [],
+      customTools: this.customTools,
     });
 
     this.session = result.session;
