@@ -1,10 +1,5 @@
 # TODO: Questions and Follow-ups
 
-## DeepSeek Model IDs
-- **DESIGN.md** specifies model IDs: `deepseek-v4-flash` and `deepseek-v4-pro`
-- **Implementation** uses: `deepseek-chat` and `deepseek-reasoner` (actual DeepSeek API model names)
-- **Question:** Should we use the DESIGN.md names or the actual DeepSeek API model IDs? The actual API uses `deepseek-chat` and `deepseek-reasoner`.
-
 ## Telegram Threaded Replies
 - The latest `@telegraf/types` API uses `reply_parameters` (with `message_id`) instead of the old `reply_to_message_id` field
 - Implementation uses `reply_parameters: { message_id }` cast as `any` to work around type differences
