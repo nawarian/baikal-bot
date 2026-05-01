@@ -3,12 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
-
-# Copy package files and install dependencies
+# Copy package files and install all dependencies (including dev for TypeScript)
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source and compile
 COPY tsconfig.json ./
@@ -25,6 +22,7 @@ RUN addgroup -g 1001 -S baikal && \
 WORKDIR /app
 
 # Copy production dependencies from builder
+# We use --omit=dev here to match the production install from the builder
 COPY --from=builder /app/node_modules node_modules/
 COPY --from=builder /app/dist dist/
 
