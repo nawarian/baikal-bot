@@ -10,3 +10,4 @@ data/
 
 # Long-term memory
 memory/
+.env.swp
