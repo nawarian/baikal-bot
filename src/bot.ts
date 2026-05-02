@@ -211,6 +211,11 @@ export class BaikalBot {
     // Log the message
     this.engine.logMessage(fromName, text);
 
+    // Debug: log chat ID for proactive messaging setup
+    if (ctx.chat?.id) {
+      console.log(`[Baikal] Chat ID: ${ctx.chat.id} (type: ${ctx.chat.type})`);
+    }
+
     // Check if the bot is tagged
     if (!this.isTagged(message)) return;
 
