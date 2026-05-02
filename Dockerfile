@@ -15,10 +15,6 @@ RUN npm run build
 # ---- Runtime stage ----
 FROM node:22-alpine
 
-# Add a non-root user
-RUN addgroup -g 1001 -S baikal && \
-    adduser -S baikal -u 1001 -G baikal
-
 WORKDIR /app
 
 # Copy production dependencies from builder
@@ -29,22 +25,14 @@ COPY --from=builder /app/dist dist/
 # Copy package.json for metadata
 COPY package.json package-lock.json ./
 
-# Copy the officecli binary (needed by MS-Office skill)
-COPY --chown=baikal:baikal bin/ bin/
-
-# Create directories that will be mounted as volumes,
-# with proper permissions so the non-root user can write to them
-RUN mkdir -p /app/data /app/memory /app/tools /app/skills && \
-    chown -R baikal:baikal /app
-
 # Switch to non-root user
-USER baikal
-
-# Environment variables (override at runtime via docker-compose)
-ENV NODE_ENV=production
+USER node
 
 # Volumes for user-managed directories
 VOLUME ["/app/tools", "/app/skills", "/app/memory", "/app/data"]
+
+# Environment variables (override at runtime via docker-compose)
+ENV NODE_ENV=production
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
