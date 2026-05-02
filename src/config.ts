@@ -5,6 +5,11 @@
 /** Telegram usernames (without @) authorized to use /model command. */
 export const ALLOWED_USERS: string[] = ["nawarian"];
 
+/** Chat ID for proactive/scheduled messages. */
+export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+  ? Number(process.env.TELEGRAM_CHAT_ID)
+  : undefined;
+
 /** Maximum number of recent messages to keep in the message log. */
 export const MAX_MESSAGE_LOG = 500;
 

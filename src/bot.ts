@@ -2,6 +2,8 @@ import { Telegraf, type Context } from "telegraf";
 import type { Message } from "@telegraf/types";
 import { BOT_USERNAME, setBotUsername, isAllowedUser } from "./config.js";
 import type { BaikalEngine } from "./engine.js";
+import { Scheduler } from "./scheduler.js";
+import { setScheduler } from "../tools/scheduler.js";
 
 /**
  * Baikal Telegram Bot — handles message routing, tag detection,
@@ -10,6 +12,7 @@ import type { BaikalEngine } from "./engine.js";
 export class BaikalBot {
   bot: Telegraf;
   engine: BaikalEngine;
+  scheduler: Scheduler;
 
   constructor(engine: BaikalEngine) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -22,6 +25,11 @@ export class BaikalBot {
 
     this.bot = new Telegraf(token);
     this.engine = engine;
+
+    // Set up the scheduler and wire it into the engine and tool
+    this.scheduler = new Scheduler(this.bot);
+    this.engine.setScheduler(this.scheduler);
+    setScheduler(this.scheduler);
 
     this.setupHandlers();
   }
@@ -36,6 +44,9 @@ export class BaikalBot {
       console.log(`[Baikal] Bot started as @${BOT_USERNAME}`);
     });
 
+    // Start the scheduler
+    this.scheduler.start();
+
     // Start polling
     this.bot.launch();
     console.log("[Baikal] Polling for updates...");
@@ -45,6 +56,7 @@ export class BaikalBot {
    * Stop the bot gracefully.
    */
   stop(signal?: string): void {
+    this.scheduler.stop();
     this.bot.stop(signal);
   }
 

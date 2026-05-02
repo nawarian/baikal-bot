@@ -12,6 +12,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { config } from "dotenv";
 import { loadAll } from "./loader.js";
+import type { Scheduler, ScheduledTask } from "./scheduler.js";
 import {
   DEFAULT_MODEL_ID,
   PRO_MODEL_ID,
@@ -64,6 +65,9 @@ export class BaikalEngine {
 
   /** Loaded skills text. */
   skills: string = "";
+
+  /** Scheduler instance for proactive messaging. */
+  scheduler: Scheduler | null = null;
 
   /** Session file path. */
   sessionFile: string;
@@ -321,6 +325,40 @@ export class BaikalEngine {
    */
   getAvailableModels(): string[] {
     return [DEFAULT_MODEL_ID, PRO_MODEL_ID];
+  }
+
+  /**
+   * Set the scheduler instance and wire the prompt handler so prompt-type
+   * scheduled tasks go through the agent session at fire time.
+   */
+  setScheduler(scheduler: Scheduler): void {
+    this.scheduler = scheduler;
+
+    scheduler.onPromptTask = async (task: ScheduledTask) => {
+      let responseText = "";
+      const unsubscribe = this.session.subscribe((event) => {
+        if (
+          event.type === "message_update" &&
+          event.assistantMessageEvent.type === "text_delta"
+        ) {
+          responseText += event.assistantMessageEvent.delta;
+        }
+      });
+
+      const prompt =
+        `[Scheduled Task]\n\n${task.prompt}\n\n` +
+        "This is an automated scheduled prompt. Respond with the requested information in a friendly, conversational way.";
+      await this.session.prompt(prompt);
+
+      // Small delay to let final text deltas arrive before unsubscribing
+      await new Promise((r) => setTimeout(r, 1000));
+      unsubscribe();
+
+      return (
+        responseText.trim() ||
+        "I ran the scheduled task but couldn't produce a response."
+      );
+    };
   }
 
   /**
