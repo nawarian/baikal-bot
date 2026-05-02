@@ -10,6 +10,7 @@ import {
   SessionManager,
   type AgentSession,
 } from "@mariozechner/pi-coding-agent";
+import type { AgentSessionEvent } from "@mariozechner/pi-coding-agent";
 import { config } from "dotenv";
 import { loadAll } from "./loader.js";
 import type { Scheduler, ScheduledTask } from "./scheduler.js";
@@ -74,6 +75,9 @@ export class BaikalEngine {
 
   /** Project root directory. */
   rootDir: string;
+
+  /** Unsubscribe function for the global stderr logger. */
+  private _logUnsubscribe?: () => void;
 
   constructor() {
     this.authStorage = AuthStorage.create();
@@ -146,6 +150,9 @@ export class BaikalEngine {
     // Apply sandbox to restrict file access to the project directory
     const { applySandbox } = await import("./sandbox.js");
     applySandbox(this.session, this.rootDir);
+
+    // Wire up global stderr logging for all session events
+    this._subscribeStderrLogger();
   }
 
   /**
@@ -221,6 +228,8 @@ export class BaikalEngine {
    * Reset the session (discard conversation history, keep message log).
    */
   async resetSession(): Promise<void> {
+    // Unsubscribe the old stderr logger before disposing
+    this._logUnsubscribe?.();
     this.session.dispose();
 
     // Clear the message log so the fresh session starts with no context
@@ -247,6 +256,9 @@ export class BaikalEngine {
     // Re-apply sandbox on the new session
     const { applySandbox } = await import("./sandbox.js");
     applySandbox(this.session, this.rootDir);
+
+    // Re-wire stderr logging for the new session
+    this._subscribeStderrLogger();
   }
 
   /**
@@ -362,9 +374,137 @@ export class BaikalEngine {
   }
 
   /**
+   * Subscribe to all session events and log them to stderr.
+   */
+  private _subscribeStderrLogger(): void {
+    this._logUnsubscribe?.();
+
+    this._logUnsubscribe = this.session.subscribe((_event: AgentSessionEvent) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ev = _event as any;
+
+      switch (ev.type as string) {
+        case "agent_start":
+          process.stderr.write("[Baikal:agent] Agent turn started\n");
+          break;
+
+        case "agent_end":
+          process.stderr.write("[Baikal:agent] Agent turn ended\n");
+          break;
+
+        case "turn_start":
+          process.stderr.write("[Baikal:agent] LLM turn started\n");
+          break;
+
+        case "turn_end":
+          process.stderr.write("[Baikal:agent] LLM turn ended\n");
+          break;
+
+        case "message_start": {
+          const msg = ev.message;
+          const preview =
+            msg.role === "assistant"
+              ? msg.content?.[0]?.text?.slice(0, 200) ?? ""
+              : "";
+          process.stderr.write(
+            `[Baikal:agent] Message start (role: ${msg.role})${preview ? `: ${preview}...` : ""}\n`
+          );
+          break;
+        }
+
+        case "message_update": {
+          const msgEvent = ev.assistantMessageEvent;
+          if (msgEvent.type === "text_delta") {
+            process.stderr.write(
+              `[Baikal:agent] Text delta: ${msgEvent.delta}`
+            );
+          } else if (msgEvent.type === "thinking_delta") {
+            process.stderr.write(
+              `[Baikal:agent] Thinking delta: ${msgEvent.delta}`
+            );
+          }
+          break;
+        }
+
+        case "message_end": {
+          const msg = ev.message;
+          process.stderr.write(
+            `[Baikal:agent] Message end (role: ${msg.role}, stop_reason: ${msg.stopReason ?? "n/a"})\n`
+          );
+          break;
+        }
+
+        case "tool_execution_start":
+          process.stderr.write(
+            `[Baikal:agent] Tool start: ${ev.toolName}(${JSON.stringify(ev.args)})\n`
+          );
+          break;
+
+        case "tool_execution_update":
+          process.stderr.write(
+            `[Baikal:agent] Tool update: ${ev.toolName} - ${JSON.stringify(ev.partialResult)}\n`
+          );
+          break;
+
+        case "tool_execution_end":
+          process.stderr.write(
+            `[Baikal:agent] Tool end: ${ev.toolName} (error: ${ev.isError})\n`
+          );
+          break;
+
+        case "compaction_start":
+          process.stderr.write(`[Baikal:agent] Compaction started (${ev.reason})\n`);
+          break;
+
+        case "compaction_end":
+          process.stderr.write(
+            `[Baikal:agent] Compaction ended (reason: ${ev.reason}, aborted: ${ev.aborted})\n`
+          );
+          break;
+
+        case "auto_retry_start":
+          process.stderr.write(
+            `[Baikal:agent] Auto-retry attempt ${ev.attempt}/${ev.maxAttempts}: ${ev.errorMessage}\n`
+          );
+          break;
+
+        case "auto_retry_end":
+          process.stderr.write(
+            `[Baikal:agent] Auto-retry ended (success: ${ev.success}, attempt: ${ev.attempt})\n`
+          );
+          break;
+
+        case "queue_update":
+          process.stderr.write(
+            `[Baikal:agent] Queue update — steering: ${ev.steering.length}, followUp: ${ev.followUp.length}\n`
+          );
+          break;
+
+        case "thinking_level_changed":
+          process.stderr.write(
+            `[Baikal:agent] Thinking level changed to: ${ev.level}\n`
+          );
+          break;
+
+        case "session_info_changed":
+          process.stderr.write(
+            `[Baikal:agent] Session name: ${ev.name ?? "<unset>"}\n`
+          );
+          break;
+
+        default:
+          // Log any unhandled event types
+          process.stderr.write(`[Baikal:agent] Event: ${ev.type}\n`);
+          break;
+      }
+    });
+  }
+
+  /**
    * Clean up resources.
    */
   dispose(): void {
+    this._logUnsubscribe?.();
     this.session.dispose();
   }
 }

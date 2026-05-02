@@ -1,10 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-
-let schedulerInstance: any = null;
-
-export function setScheduler(scheduler: any): void {
-  schedulerInstance = scheduler;
-}
+import { getScheduler } from "../src/scheduler-registry.js";
 
 // Build the tool definition with the correct execute signature using a cast
 const tool: ToolDefinition = {
@@ -64,6 +59,7 @@ const tool: ToolDefinition = {
       when: string;
     };
 
+    const schedulerInstance = getScheduler();
     if (!schedulerInstance) {
       return {
         content: [{ type: "text" as const, text: "Scheduler is not initialized. Cannot schedule tasks." }],

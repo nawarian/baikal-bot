@@ -3,7 +3,7 @@ import type { Message } from "@telegraf/types";
 import { BOT_USERNAME, setBotUsername, isAllowedUser } from "./config.js";
 import type { BaikalEngine } from "./engine.js";
 import { Scheduler } from "./scheduler.js";
-import { setScheduler } from "../tools/scheduler.js";
+import { setScheduler } from "./scheduler-registry.js";
 
 /**
  * Baikal Telegram Bot — handles message routing, tag detection,
