@@ -50,4 +50,4 @@ VOLUME ["/app/tools", "/app/skills", "/app/memory", "/app/data"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "process.exit(typeof process.env.TELEGRAM_BOT_TOKEN === 'string' ? 0 : 1)" || exit 1
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]
