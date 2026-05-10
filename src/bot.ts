@@ -20,7 +20,7 @@ export class BaikalBot {
       );
     }
 
-    this.bot = new Telegraf(token);
+    this.bot = new Telegraf(token, { handlerTimeout: Infinity });
     this.engine = engine;
 
     this.setupHandlers();
