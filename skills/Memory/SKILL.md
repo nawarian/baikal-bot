@@ -6,46 +6,15 @@ You have a persistent long-term memory stored in markdown files under the `memor
 
 - **Never, ever store anything in memory unless the user explicitly tells you to remember it.** Users must use words like "remember", "save this", "store this", "keep this in mind", or similar explicit save requests.
 - Facts are stored as individual markdown files in `memory/` — one file per topic or logical grouping.
-- **Do NOT read all memory files on every interaction.** Memory files can be large and numerous. Instead, **list the available topics** by scanning filenames, then only read specific files when the user's question relates to that topic.
-- When the user asks "what do you know about me?" or "what do you remember?" or similar, list the topics (filenames) you've stored.
+- **All memory files are automatically loaded into your context at the start of every interaction** (every time you are tagged). You do NOT need to manually `cat` or `ls` memory files — their content is already available in the `--- Persistent Memory ---` block at the top of your context.
+- Because all memory is pre-loaded, **you already know the topics and their contents**. There is no need to list or read files separately unless you need to verify the current state of a file you just wrote.
+- When the user asks "what do you know about me?" or "what do you remember?" — just summarise what you see in the persistent memory block. You already have the full content.
 
-## How to Decide Which File to Read
+## Writing / Updating / Deleting Memory
 
-For example, given these files in `memory/`:
+You still use bash to persist new information:
 
-```
-agenda.md               → important dates, appointments, visa deadlines
-family.md               → family member info (names, allergies, preferences)
-meal-plans.md           → links to meal plan spreadsheets
-```
-
-When the user asks about:
-- "what's for lunch today?" → read `meal-plans.md` (tells you where the spreadsheet is)
-- "when is the visa appointment?" → read `agenda.md`
-- "what do you remember?" → **list filenames only**, do not read them
-
-## Listing Topics (always safe, no file reading needed)
-
-```bash
-ls memory/*.md 2>/dev/null
-# Output example:
-# memory/agenda.md
-# memory/family.md
-# memory/meal-plans.md
-# memory/kw19-mealplan-adults.md
-# memory/kw19-mealplan-lua.md
-```
-
-## Reading a Specific Memory File
-
-```bash
-cat memory/family.md
-cat memory/agenda.md
-```
-
-Only read files whose topic matches the user's question. Do not read irrelevant files.
-
-## Storing a Fact (only when user says "remember this")
+### Storing a Fact (only when user says "remember this")
 
 ```bash
 # Create a new memory file for a fact
@@ -58,7 +27,7 @@ cat > memory/group-members.md << 'MEMEOF'
 MEMEOF
 ```
 
-## Updating a Memory
+### Updating a Memory
 
 ```bash
 # Overwrite an existing memory file with new facts
@@ -71,7 +40,7 @@ cat > memory/group-members.md << 'MEMEOF'
 MEMEOF
 ```
 
-## Deleting a Memory
+### Deleting a Memory
 
 ```bash
 # Remove a memory file
@@ -81,10 +50,9 @@ rm memory/group-members.md 2>/dev/null
 ## Important Rules
 
 1. **Only save facts when the user explicitly asks you to.** Do not volunteer to save things unprompted.
-2. **Do NOT read all memory files upfront.** List filenames first, then read only what's relevant to the current question.
+2. **Do NOT manually `cat` or `ls` memory files to read them.** Memory is pre-loaded into your context on every interaction.
 3. **Use descriptive filenames** — e.g. `dietary-restrictions.md`, `birthdays.md`, `home-prefs.md`.
 4. **Keep each memory file focused on one topic** so facts are easy to find and update.
-5. **When listing memory**, use `ls memory/*.md 2>/dev/null` to show available topics.
-6. **Only read a file** with `cat memory/<filename>` when the user's question matches its topic.
-7. **If memory/ directory doesn't exist**, create it with `mkdir -p memory` when storing the first fact.
-8. **Always confirm with the user** after storing or updating facts: "I've saved that information."
+5. **If memory/ directory doesn't exist**, create it with `mkdir -p memory` when storing the first fact.
+6. **Always confirm with the user** after storing or updating facts: "I've saved that information."
+7. **After writing a memory file**, note that the pre-loaded context still shows the old version for the *current* interaction. Your changes will be picked up on the *next* tagged message when memory is re-read from disk.

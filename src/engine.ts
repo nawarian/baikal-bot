@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Model, Api } from "@mariozechner/pi-ai";
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
@@ -65,6 +66,9 @@ export class BaikalEngine {
   /** Loaded skills text. */
   skills: string = "";
 
+  /** Loaded memory content (all .md files from memory/ directory). */
+  memoryContent: string = "";
+
   /** Session file path. */
   sessionFile: string;
 
@@ -99,10 +103,11 @@ export class BaikalEngine {
     const deepseekConfig = getDeepSeekProviderConfig();
     this.modelRegistry.registerProvider("deepseek", deepseekConfig);
 
-    // Load tools and skills
+    // Load tools, skills, and memory
     const loaderResult = await loadAll();
     this.customTools = loaderResult.tools;
     this.skills = loaderResult.skills;
+    this.memoryContent = this.loadMemory();
 
     if (loaderResult.errors.length > 0) {
       console.warn("[Baikal] Warnings during tool/skill loading:");
@@ -177,6 +182,43 @@ export class BaikalEngine {
   }
 
   /**
+   * Load all .md files from the memory/ directory and return them as a formatted block.
+   * This runs on every tagged message so the agent always has the latest memory.
+   */
+  private loadMemory(): string {
+    const memoryDir = join(this.rootDir, "memory");
+    if (!existsSync(memoryDir)) return "";
+
+    const entries = readdirSync(memoryDir, { withFileTypes: true });
+    const parts: string[] = [];
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.startsWith(".")) {
+        continue;
+      }
+
+      const filePath = join(memoryDir, entry.name);
+      try {
+        const content = readFileSync(filePath, "utf-8");
+        parts.push(`--- ${entry.name} ---\n${content}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`[Baikal] Failed to read memory/${entry.name}: ${message}`);
+      }
+    }
+
+    return parts.join("\n\n");
+  }
+
+  /**
+   * Get a formatted block of memory content for injection into context.
+   */
+  private getMemoryBlock(): string {
+    if (!this.memoryContent) return "";
+    return `--- Persistent Memory ---\n${this.memoryContent}\n---`;
+  }
+
+  /**
    * Get a formatted block of recent messages for injection into context.
    */
   getRecentMessagesBlock(): string {
@@ -202,15 +244,22 @@ export class BaikalEngine {
 
   /**
    * Process a message that tags the bot.
-   * Injects the recent message log into context and prompts the agent.
+   * Injects persistent memory, the recent message log, and prompts the agent.
+   * Memory is freshly read from disk each time to reflect any agent-saved changes.
    */
   async processTaggedMessage(taggedText: string): Promise<void> {
-    const contextBlock = this.getRecentMessagesBlock();
-    const fullPrompt = contextBlock
-      ? `${contextBlock}\n\n${taggedText}`
-      : taggedText;
+    // Re-read memory from disk to pick up any files the agent may have saved
+    this.memoryContent = this.loadMemory();
 
-    await this.session.prompt(fullPrompt);
+    const memoryBlock = this.getMemoryBlock();
+    const contextBlock = this.getRecentMessagesBlock();
+
+    const parts: string[] = [];
+    if (memoryBlock) parts.push(memoryBlock);
+    if (contextBlock) parts.push(contextBlock);
+    parts.push(taggedText);
+
+    await this.session.prompt(parts.join("\n\n"));
   }
 
   /**
@@ -254,6 +303,7 @@ export class BaikalEngine {
     const loaderResult = await loadAll();
     this.customTools = loaderResult.tools;
     this.skills = loaderResult.skills;
+    this.memoryContent = this.loadMemory();
 
     // Keep built-in tools, replace custom tools in-place
     // The agent's tool array is a mix of built-in tools and custom tools
@@ -277,12 +327,24 @@ export class BaikalEngine {
     const toolNames = this.customTools.map((t) => t.name).join(", ");
     const skillCount = Object.keys(loaderResult.skillsMap).length;
     return (
-      `Tools and skills reloaded. ` +
+      `Tools, skills, and memory reloaded. ` +
       `Loaded ${this.customTools.length} tool(s)` +
       (this.customTools.length > 0 ? ` (${toolNames})` : "") +
       ` and ${skillCount} skill(s).` +
+      (this.memoryContent ? ` Memory has ${this.countMemoryFiles()} file(s).` : " Memory directory is empty.") +
       (warnings.length > 0 ? `\nWarnings:\n${warnings.join("\n")}` : "")
     );
+  }
+
+  /**
+   * Count the number of .md files in the memory/ directory.
+   */
+  private countMemoryFiles(): number {
+    const memoryDir = join(this.rootDir, "memory");
+    if (!existsSync(memoryDir)) return 0;
+    return readdirSync(memoryDir)
+      .filter((f) => f.endsWith(".md") && !f.startsWith("."))
+      .length;
   }
 
   /**
